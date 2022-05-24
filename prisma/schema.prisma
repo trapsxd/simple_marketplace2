@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+}
+
+model Product {
+  id        Int      @id @default(autoincrement())
+  name      String
+  sku       String
+  qty       Int
+  price     Int
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+
+  // FOREGN KEY
+  product_photo Product_photo[]
+}
+
+model Product_photo {
+  id         Int      @id @default(autoincrement())
+  filename   String
+  location   String
+  product_id Int
+  createdAt  DateTime @default(now())
+  updateAt   DateTime @updatedAt
+
+  // RELATION
+  product Product? @relation(fields: [product_id], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  admin
+  super_admin
+}
