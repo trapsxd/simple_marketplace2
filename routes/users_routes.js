@@ -34,7 +34,7 @@ users_routes.post("/users/create", async (req, res)=>{
 
         res.status(201).json({
             success : true,
-            query : createUsers
+            message : "Success create user.."
         })
     } catch (error) {
         res.status(500).json({
