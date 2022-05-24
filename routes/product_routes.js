@@ -10,20 +10,34 @@ env.config()
 const product_routes = express.Router()
 
 // CREATE PRODUCT
-product_routes.post("/product/create", product_upload.any("photo"), authCheck, async(req, res)=>{
+product_routes.post("/product/create", product_upload.array("photo"), authCheck, async(req, res)=>{
     try {
         const data = await req.body
+        console.info(data)
         const file = await req.files
+
+        // array file list
+        let dataFile = []
+
+        // push array to file object
+        const generateFileData = await file.forEach((e)=>{
+            dataFile.push({
+                filename : e.filename,
+                location : `/public/uploads/product/${e.filename}`
+            })
+        })
+
+        console.info(dataFile)
+
         const store = await conn.product.create({
             data : {
                 name : data.name,
                 sku : data.sku,
-                qty : data.qty,
-                price : data.price,
+                qty : parseInt(data.qty),
+                price : parseInt(data.price),
                 product_photo : {
-                    create : {
-                        filename : file.filename,
-                        location : `/public/uploads/product/${file.filename}`
+                    createMany : {
+                        data : dataFile
                     }
                 }
 
@@ -84,7 +98,7 @@ product_routes.get("/product/read", async (req, res) =>{
 })
 
 // UPDATE PRODUCT
-product_routes.put("/product/update", product_upload.array("photo"), authCheck, async(req, res)=>{
+product_routes.put("/product/update", product_upload.none(), authCheck, async(req, res)=>{
     try {
         const data = await req.body
         const file = await req.files
@@ -92,20 +106,7 @@ product_routes.put("/product/update", product_upload.array("photo"), authCheck, 
             where : {
                 id : parseInt(data.id)
             },
-            include:{
-                product_photo :{
-                    select : {
-                        id : true,
-                        filename : true,
-                        location : true
-                    }
-                }
-            }
         })
-
-        if(file) {
-            const removeFile = await fs.unlinkSync(path.join(__dirname, `../static/public/uploads/product/${findProduct.product_photo.filename}`))
-        
 
         const updateProduct = await conn.product.update({
             where : {
@@ -114,28 +115,10 @@ product_routes.put("/product/update", product_upload.array("photo"), authCheck, 
             data : {
                 name : data.name,
                 sku : data.sku,
-                qty : data.qty,
-                price : data.price,
-                users_id : data.users_id,
-                product_photo : {
-                    filename : file.filename,
-                    location : `/public/uploads/product/${file.filename}`,
-                }
-            }
+                qty :parseInt(data.qty),
+                price : parseInt(data.price)
+            },
         })
-        }else{
-            const updateProduct = await conn.product.update({
-                where : {
-                    id : parseInt(data.id)
-                },
-                data : {
-                    name : data.name,
-                    sku : data.sku,
-                    qty :data.qty,
-                    price : data.price
-                },
-            })
-        }
 
         res.status(201).json({
             success : true,
@@ -157,6 +140,14 @@ product_routes.delete("/product/delete", product_upload.array("photo"), authChec
         const result = await conn.product.delete({
             where : {
                 id: parseInt(data.id)
+            },
+            include : {
+                product_photo : {
+                    select : {
+                        id : true,
+                        filename : true
+                    }
+                }
             }
         })
 
@@ -169,7 +160,9 @@ product_routes.delete("/product/delete", product_upload.array("photo"), authChec
         }
 
         // DELETE PRODUCT PHOTO FROM SERVER
-        const deleteFromServer = await fs.unlinkSync(path.join(__dirname, `../static/public/uploads/${result.filename}`))
+        result.product_photo.forEach((e)=>{
+            fs.unlinkSync(path.join(__dirname, `../static/public/uploads/product/${e.filename}`))
+        })
 
         res.status(201).json({
             success : true,
